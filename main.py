@@ -12,9 +12,27 @@ import os
 import ssl
 import time
 import logging
+import json
+import os
 
 # Настроим логирование
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(message)s")
+
+SAVE_FILE = "last_conversion.json"
+
+
+def save_conversion(conversion_data):
+    """Сохраняет данные конвертации в файл."""
+    with open(SAVE_FILE, "w", encoding="utf-8") as f:
+        json.dump(conversion_data, f, indent=4, ensure_ascii=False)
+
+
+def load_conversion():
+    """Загружает данные последней конверсии из файла."""
+    if os.path.exists(SAVE_FILE):
+        with open(SAVE_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return None
 
 
 def check_internet_connection():
@@ -60,7 +78,7 @@ def check_internet_connection():
     return False
 
 
-# Пример вызова функции
+# Проверка интернет соединения
 if check_internet_connection():
     print("Интернет подключен.")
 else:
@@ -279,6 +297,47 @@ class CurrencyConverterApp(QMainWindow):
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
 
+        # Загрузка последней конвертации
+        self.load_settings()
+
+    def load_settings(self):
+        """
+        Загружает сохраненные валюты и сумму из файла.
+        """
+        settings_file = "currency_settings.txt"
+        if os.path.exists(settings_file):
+            with open(settings_file, "r") as file:
+                lines = file.readlines()
+                if len(lines) >= 3:
+                    from_currency = lines[0].strip()
+                    to_currency = lines[1].strip()
+                    amount = lines[2].strip()
+                    self.from_currency_combo.setCurrentText(from_currency)
+                    self.to_currency_combo.setCurrentText(to_currency)
+                    self.from_amount_input.setText(amount)
+
+    def save_settings(self):
+        """
+        Сохраняет текущие валюты и сумму в файл.
+        """
+        from_currency = self.from_currency_combo.currentText()
+        to_currency = self.to_currency_combo.currentText()
+        amount = self.from_amount_input.text()
+
+        with open("currency_settings.txt", "w") as file:
+            file.write(f"{from_currency}\n")
+            file.write(f"{to_currency}\n")
+            file.write(f"{amount}\n")
+
+
+    def closeEvent(self, event):
+        """
+        Событие при закрытии окна — сохраняем настройки.
+        """
+        self.save_settings()
+        event.accept()
+
+
     def create_currency_combo(self):
         """
         Создает комбинированный список с валютами и их флагами.
@@ -492,6 +551,7 @@ class CurrencyConverterApp(QMainWindow):
 
 
 def main():
+    # Запуск приложения
     try:
         # Логируем начало запуска приложения
         logging.info("Запуск приложения...")
